@@ -62,9 +62,29 @@ ACTIVITIES_BASE = [
     "Interview Questions",
     "Coding Problem",
     "Ask Anything",
+    "✅ Get Feedback on My Answer",
 ]
 
 INTERACTIVE_QUIZ_ACTIVITIES = {"Generate MCQs", "Generate Quiz"}
+FEEDBACK_ACTIVITY = "✅ Get Feedback on My Answer"
+
+# Prompt Template 4 – Feedback
+FEEDBACK_PROMPT_TEMPLATE = """You are {persona_name}, an AI Learning Buddy.
+
+Question:
+{question}
+
+Student Answer:
+{student_answer}
+
+Correct Answer:
+{correct_answer}
+
+Instructions:
+- Tell whether the student's answer is correct or incorrect.
+- Explain why.
+- Give encouraging feedback.
+- Suggest one revision tip."""
 
 ACTIVITY_PROMPTS = {
     "Explain Topic": "Explain the topic '{topic}' from the AI field '{field}'. End by asking if the learner wants a real-life example.",
@@ -208,7 +228,7 @@ client = genai.Client(api_key=api_key)
 # =========================================================
 # HEADER
 # =========================================================
-st.title(" AI Learning Buddy")
+st.title("AI Learning Buddy")
 st.markdown("**Welcome to AI Learning Buddy!**")
 st.caption(
     "This application uses Google Gemini AI to help you learn Artificial Intelligence and its "
@@ -344,6 +364,16 @@ if topic:
     st.subheader("Step 4 · Choose an Activity")
     activity = st.selectbox("Choose an Activity", ACTIVITIES_BASE, label_visibility="collapsed")
 
+    feedback_question = feedback_student_answer = feedback_correct_answer = ""
+    if activity == FEEDBACK_ACTIVITY:
+        st.markdown("#### ✅ Get Feedback on My Answer")
+        feedback_question = st.text_area("Question", value=topic, placeholder="Paste or type the question you were asked...")
+        feedback_student_answer = st.text_area("Your Answer", placeholder="Type the answer you gave...")
+        feedback_correct_answer = st.text_area(
+            "Correct Answer (optional)",
+            placeholder="Paste the correct answer if you know it — leave blank and your AI tutor will work it out.",
+        )
+
     if st.button("✨ Generate", type="primary"):
         if activity in INTERACTIVE_QUIZ_ACTIVITIES:
             level_guidance = build_experience_instruction(exp_level)
@@ -366,6 +396,46 @@ if topic:
                         st.rerun()
                     else:
                         st.error("Couldn't build the quiz from the AI's response — please click Generate again.")
+                except Exception as e:
+                    if "503" in str(e) or "UNAVAILABLE" in str(e) or "overloaded" in str(e).lower():
+                        st.error("Gemini's servers are busy right now. This usually clears up in a few seconds — please click Generate again.")
+                    else:
+                        st.error(f"Something went wrong: {e}")
+        elif activity == FEEDBACK_ACTIVITY:
+            if not feedback_question.strip() or not feedback_student_answer.strip():
+                st.warning("⚠️ Please fill in both the Question and Your Answer before generating feedback.")
+            else:
+                quiz_engine.clear_quiz()
+                persona_name = st.session_state.persona_name.strip() or "Professor Gemini"
+                correct_answer_text = feedback_correct_answer.strip() or (
+                    "(not provided — work out the correct answer yourself first, then use it to grade the student's answer)"
+                )
+                prompt = FEEDBACK_PROMPT_TEMPLATE.format(
+                    persona_name=persona_name,
+                    question=feedback_question.strip(),
+                    student_answer=feedback_student_answer.strip(),
+                    correct_answer=correct_answer_text,
+                )
+                system_instruction = (
+                    f"You are {persona_name}, a patient and encouraging AI Learning Buddy. Follow the instructions "
+                    f"in the user's message exactly and keep your tone warm and supportive."
+                )
+
+                st.markdown("### 📖 Response")
+                response_placeholder = st.empty()
+                try:
+                    result = call_gemini_stream(
+                        client, system_instruction, prompt, response_placeholder,
+                        max_tokens=600,
+                    )
+                    st.session_state.last_response = result
+                    st.session_state.history.append({
+                        "context": f"{field} > {exp_level}",
+                        "topic": feedback_question.strip()[:60],
+                        "activity": activity,
+                        "response": result,
+                    })
+                    st.rerun()
                 except Exception as e:
                     if "503" in str(e) or "UNAVAILABLE" in str(e) or "overloaded" in str(e).lower():
                         st.error("Gemini's servers are busy right now. This usually clears up in a few seconds — please click Generate again.")
