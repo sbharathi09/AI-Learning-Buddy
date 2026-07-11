@@ -3,10 +3,8 @@
 An interactive, AI-powered learning assistant built with **Streamlit** and **Google Gemini**, focused entirely on **Artificial Intelligence and its related fields** — Machine Learning, Deep Learning, NLP, Computer Vision, Generative AI, Robotics, AI Ethics, and more.
 
 Type in any AI topic, pick your experience level, choose an activity, and get instant, beginner-to-advanced-friendly responses — including a fully interactive quiz mode with live scoring and color-coded feedback.
-
 ---
 ## 🚀 Live Demo
-
 🔗 **Live App:** https://ai-learning-buddy-ymnwvjbldvym2akdvt8pbg.streamlit.app/
 ---
 
