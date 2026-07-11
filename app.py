@@ -80,16 +80,16 @@ ACTIVITY_PROMPTS = {
 }
 
 ACTIVITY_MAX_TOKENS = {
-    "Explain Topic": 5000,
-    "Real-Life Example": 3500,
-    "Generate Notes": 5000,
-    "Generate Summary": 2500,
-    "Practice Questions": 2500,
-    "Assignment Questions": 2500,
-    "Study Plan": 2000,
-    "Interview Questions": 1800,
-    "Coding Problem": 1500,
-    "Ask Anything": 1500,
+    "Explain Topic": 900,
+    "Real-Life Example": 500,
+    "Generate Notes": 1600,
+    "Generate Summary": 400,
+    "Practice Questions": 700,
+    "Assignment Questions": 700,
+    "Study Plan": 1000,
+    "Interview Questions": 1200,
+    "Coding Problem": 1000,
+    "Ask Anything": 900,
 }
 
 
@@ -102,6 +102,8 @@ if "last_response" not in st.session_state:
     st.session_state.last_response = None
 if "topic_input" not in st.session_state:
     st.session_state.topic_input = ""
+if "persona_name" not in st.session_state:
+    st.session_state.persona_name = "Professor Gemini"
 quiz_engine.init_quiz_state()
 
 
@@ -148,12 +150,14 @@ def call_gemini_stream(client: "genai.Client", system_instruction: str, prompt: 
     """
     Call Gemini with streaming so text appears progressively in `placeholder`
     instead of waiting for the full response. Retries on transient 503s
-    before any tokens have been received.
+    before any tokens have been received. Flags the output if it was cut
+    off by the token limit rather than finishing naturally.
     """
     last_error = None
     for attempt in range(max_retries):
         try:
             full_text = ""
+            truncated = False
             stream = client.models.generate_content_stream(
                 model=MODEL_NAME,
                 contents=prompt,
@@ -167,6 +171,13 @@ def call_gemini_stream(client: "genai.Client", system_instruction: str, prompt: 
                 if chunk.text:
                     full_text += chunk.text
                     placeholder.markdown(full_text + "▌")
+                try:
+                    if chunk.candidates and chunk.candidates[0].finish_reason == "MAX_TOKENS":
+                        truncated = True
+                except (AttributeError, IndexError):
+                    pass
+            if truncated:
+                full_text += "\n\n*(⚠️ Response was cut short by the length limit — click Generate again for more detail, or try a narrower question.)*"
             placeholder.markdown(full_text)
             return full_text
         except Exception as e:
@@ -205,7 +216,7 @@ st.caption(
 )
 
 feat_col1, feat_col2, feat_col3, feat_col4, feat_col5 = st.columns(5)
-feat_col1.markdown(" **Ask AI**")
+feat_col1.markdown("**Ask AI**")
 feat_col2.markdown("📖 **Explain Topic**")
 feat_col3.markdown("🌍 **Real-Life Examples**")
 feat_col4.markdown("📝 **Quiz Generator**")
@@ -216,7 +227,7 @@ st.markdown("---")
 with st.expander("✨ Features"):
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("####  AI Tutor")
+        st.markdown("#### AI Tutor")
         st.write("Ask any question about AI and its subfields, and get simple, easy-to-understand explanations.")
     with c2:
         st.markdown("#### 📝 Quiz Generator")
@@ -254,11 +265,19 @@ st.markdown("---")
 
 with st.sidebar:
     st.title("About")
-    st.caption("Persona: **Bharathi**  — an AI tutor focused entirely on AI and its subfields.")
+
+    st.markdown("#### 🧑‍🏫 Name Your AI Tutor")
+    st.text_input(
+        "Give your AI tutor a name",
+        placeholder="e.g. Professor Gemini, Tutor Max, Coach Nova...",
+        key="persona_name",
+        label_visibility="collapsed",
+    )
+    st.caption(f"Your tutor will introduce itself as **{st.session_state.persona_name or 'Professor Gemini'}** in every response.")
 
     st.markdown("#### ✨ Features")
     st.markdown(
-        "-  Ask AI\n"
+        "- Ask AI\n"
         "- 📖 Explain Topic\n"
         "- 🌍 Real-Life Examples\n"
         "- 📝 Quiz Generator (+ Interactive Quiz)\n"
@@ -330,14 +349,14 @@ if topic:
             level_guidance = build_experience_instruction(exp_level)
             only_types = ["single_mcq"] if activity == "Generate MCQs" else None
             quiz_prompt = quiz_engine.build_quiz_prompt(topic, field, exp_level, level_guidance, only_types=only_types)
-            with st.spinner("Bharathi is building your quiz..."):
+            with st.spinner(f"{st.session_state.persona_name or 'Professor Gemini'} is building your quiz..."):
                 try:
                     raw = client.models.generate_content(
                         model=MODEL_NAME,
                         contents=quiz_prompt,
                         config={
                             "system_instruction": "You are a precise quiz-writing assistant. Output ONLY valid JSON, nothing else.",
-                            "max_output_tokens": 2200,
+                            "max_output_tokens": 3200,
                             "thinking_config": {"thinking_budget": 0},
                         },
                     )
@@ -354,8 +373,12 @@ if topic:
                         st.error(f"Something went wrong: {e}")
         else:
             quiz_engine.clear_quiz()
+            persona_name = st.session_state.persona_name.strip() or "Professor Gemini"
             system_instruction = (
-                "You are Bharathi, anencouraging AI learning buddy specializing in AI and its subfields. "
+                f"You are {persona_name}, a patient and encouraging AI learning buddy specializing in AI and its subfields. "
+                f"Begin your response with a brief, natural introduction of yourself by name (e.g. \"Hi, I'm {persona_name}!\" "
+                f"or similar, varied phrasing) before addressing the learner's question — but keep the introduction to one "
+                f"short sentence so it doesn't overshadow the actual answer. "
                 + build_experience_instruction(exp_level)
                 + " Always stay on topic and keep your tone warm and supportive."
             )
