@@ -189,6 +189,3 @@ Simply connect the GitHub repository and add your **GEMINI_API_KEY** under **App
 
 ---
 
-## ⭐ Support
-
-If you found this project useful, consider giving it a ⭐ on GitHub.
