@@ -17,16 +17,9 @@ QUIZ_QUESTION_COUNT = 5
 QUIZ_CSS = """
 <style>
 .quiz-card {
-    border: 1px solid #e0e0e0;
-    border-radius: 14px;
-    padding: 18px 20px;
-    margin-bottom: 16px;
-    background: #fafafa;
-    transition: box-shadow 0.2s ease, transform 0.15s ease;
-}
-.quiz-card:hover {
-    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
-    transform: translateY(-1px);
+    padding: 14px 0 6px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eeeeee;
 }
 .feedback-box {
     border-radius: 12px;
@@ -53,6 +46,45 @@ QUIZ_CSS = """
     font-weight: 600;
     margin-right: 8px;
     font-size: 0.9rem;
+}
+.option-box {
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 6px 0;
+    border: 2px solid #e0e0e0;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+.option-correct {
+    border-color: #2e7d32;
+    background: #e8f5e9;
+    color: #1b5e20;
+    font-weight: 600;
+    opacity: 1;
+}
+.option-wrong {
+    border-color: #c62828;
+    background: #fdecea;
+    color: #7f1d1d;
+    font-weight: 600;
+    opacity: 1;
+}
+.option-faded {
+    opacity: 0.35;
+    background: transparent;
+    border-color: #e0e0e0;
+}
+/* Style the option buttons (before an answer is locked in) — transparent fill, just a border */
+div[data-testid="stButton"] > button {
+    border-radius: 10px !important;
+    border: 2px solid #e0e0e0 !important;
+    background: transparent !important;
+    transition: all 0.15s ease !important;
+}
+div[data-testid="stButton"] > button:hover {
+    border-color: #6366f1 !important;
+    background: rgba(99, 102, 241, 0.06) !important;
+    transform: translateY(-1px);
 }
 </style>
 """
@@ -105,8 +137,14 @@ and "explanation". Return ONLY the JSON array.
 """
 
 
-def build_quiz_prompt(topic: str, subject: str, level: str, level_guidance: str, n: int = QUIZ_QUESTION_COUNT) -> str:
-    return QUIZ_TYPE_INSTRUCTIONS.format(n=n, topic=topic, subject=subject, level=level, level_guidance=level_guidance)
+def build_quiz_prompt(topic: str, subject: str, level: str, level_guidance: str, n: int = QUIZ_QUESTION_COUNT, only_types=None) -> str:
+    prompt = QUIZ_TYPE_INSTRUCTIONS.format(n=n, topic=topic, subject=subject, level=level, level_guidance=level_guidance)
+    if only_types:
+        prompt += (
+            f"\n\nIMPORTANT OVERRIDE: Use ONLY this question type for every question: {only_types[0]}. "
+            f"Ignore the 'mix of types' instruction above — every single question must be of type '{only_types[0]}'."
+        )
+    return prompt
 
 
 def parse_quiz_json(raw_text: str):
@@ -144,6 +182,16 @@ def clear_quiz():
     st.session_state.quiz_started_at = None
 
 
+def _has_answer(q_type: str, selected) -> bool:
+    """Return False if the learner hasn't actually provided an answer yet."""
+    if q_type == "multi_mcq":
+        return bool(selected) and len(selected) > 0
+    if q_type in ("fill_blank", "numerical"):
+        return selected is not None and str(selected).strip() != ""
+    # single_mcq, true_false, assertion_reason, coding_output
+    return selected is not None
+
+
 def _grade(q_type: str, selected, correct) -> bool:
     if q_type == "multi_mcq":
         sel = set(x.strip().lower() for x in (selected or []))
@@ -158,8 +206,35 @@ def _grade(q_type: str, selected, correct) -> bool:
     return str(selected).strip().lower() == str(correct).strip().lower()
 
 
+SINGLE_SELECT_TYPES = ("single_mcq", "true_false", "assertion_reason", "coding_output")
+
+
+def _render_option_boxes(options, correct, selected):
+    """Render each option as a colored box: green for the correct one, red for the learner's wrong
+    pick, and every other (irrelevant) option faded to near-transparent so attention stays on what matters."""
+    correct_set = set(x.strip().lower() for x in correct) if isinstance(correct, list) else {str(correct).strip().lower()}
+    selected_set = set(x.strip().lower() for x in selected) if isinstance(selected, list) else {str(selected).strip().lower()}
+
+    html = ""
+    for opt in options:
+        opt_norm = opt.strip().lower()
+        if opt_norm in correct_set:
+            css_class = "option-correct"
+            icon = "✅ "
+        elif opt_norm in selected_set:
+            css_class = "option-wrong"
+            icon = "❌ "
+        else:
+            css_class = "option-faded"
+            icon = ""
+        html += f'<div class="option-box {css_class}">{icon}{opt}</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def render_question(idx: int, q: dict):
-    """Render one quiz question with the appropriate widget, a Check Answer button, and feedback."""
+    """Render one quiz question. Single-select types grade instantly when an option is clicked —
+    that option's border turns green/red right away. Multi-select and text-answer types still use
+    a 'Check Answer' button since the learner needs to finish composing their answer first."""
     q_type = q.get("type", "single_mcq")
     question_text = q.get("question", "")
     options = q.get("options") or []
@@ -173,26 +248,42 @@ def render_question(idx: int, q: dict):
 
     widget_key = f"quiz_widget_{idx}"
 
-    if state["checked"]:
-        # Answer already locked in — just show what was selected, disabled-style, plus feedback.
-        selected = state["selected"]
-    else:
-        if q_type == "multi_mcq":
+    if q_type in SINGLE_SELECT_TYPES:
+        if not state["checked"]:
+            # Each option is its own button — clicking it grades instantly, no separate Check Answer step.
+            for i, opt in enumerate(options):
+                if st.button(opt, key=f"{widget_key}_opt_{i}", use_container_width=True):
+                    is_correct = _grade(q_type, opt, correct)
+                    st.session_state.quiz_answers[idx] = {"checked": True, "selected": opt, "correct": is_correct}
+                    st.rerun()
+        else:
+            _render_option_boxes(options, correct, state["selected"])
+
+    elif q_type == "multi_mcq":
+        if not state["checked"]:
             selected = st.multiselect("Select all that apply:", options, key=widget_key)
-        elif q_type == "fill_blank" or q_type == "numerical":
-            selected = st.text_input("Your answer:", key=widget_key)
-        else:  # single_mcq, true_false, assertion_reason, coding_output
-            selected = st.radio("Choose one:", options, key=widget_key, index=None)
+            if st.button("✔ Check Answer", key=f"check_{idx}"):
+                if not _has_answer(q_type, selected):
+                    st.warning("⚠️ Please select at least one option before checking.")
+                else:
+                    is_correct = _grade(q_type, selected, correct)
+                    st.session_state.quiz_answers[idx] = {"checked": True, "selected": selected, "correct": is_correct}
+                    st.rerun()
+        else:
+            _render_option_boxes(options, correct, state["selected"])
 
-        if st.button("✔ Check Answer", key=f"check_{idx}"):
-            is_correct = _grade(q_type, selected, correct)
-            st.session_state.quiz_answers[idx] = {"checked": True, "selected": selected, "correct": is_correct}
-            st.rerun()
+    else:  # fill_blank, numerical — free text, no option boxes to color
+        if not state["checked"]:
+            selected = st.text_input("Your answer:", key=widget_key)
+            if st.button("✔ Check Answer", key=f"check_{idx}"):
+                if not _has_answer(q_type, selected):
+                    st.warning("⚠️ Please enter an answer before checking.")
+                else:
+                    is_correct = _grade(q_type, selected, correct)
+                    st.session_state.quiz_answers[idx] = {"checked": True, "selected": selected, "correct": is_correct}
+                    st.rerun()
 
     if state["checked"]:
-        selected_display = ", ".join(state["selected"]) if isinstance(state["selected"], list) else str(state["selected"])
-        correct_display = ", ".join(correct) if isinstance(correct, list) else str(correct)
-
         if state["correct"]:
             st.markdown(
                 f'<div class="feedback-box feedback-correct">'
@@ -201,6 +292,8 @@ def render_question(idx: int, q: dict):
                 unsafe_allow_html=True,
             )
         else:
+            selected_display = ", ".join(state["selected"]) if isinstance(state["selected"], list) else str(state["selected"])
+            correct_display = ", ".join(correct) if isinstance(correct, list) else str(correct)
             st.markdown(
                 f'<div class="feedback-box feedback-wrong">'
                 f'❌ <b>Incorrect</b><br><br>'

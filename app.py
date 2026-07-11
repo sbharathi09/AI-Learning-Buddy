@@ -56,7 +56,6 @@ ACTIVITIES_BASE = [
     "Generate Summary",
     "Generate MCQs",
     "Generate Quiz",
-    "🎯 Interactive Quiz",
     "Practice Questions",
     "Assignment Questions",
     "Study Plan",
@@ -65,13 +64,13 @@ ACTIVITIES_BASE = [
     "Ask Anything",
 ]
 
+INTERACTIVE_QUIZ_ACTIVITIES = {"Generate MCQs", "Generate Quiz"}
+
 ACTIVITY_PROMPTS = {
     "Explain Topic": "Explain the topic '{topic}' from the AI field '{field}'. End by asking if the learner wants a real-life example.",
     "Real-Life Example": "Give ONE clear, relatable real-life example that illustrates '{topic}' (AI field: '{field}').",
     "Generate Notes": "Write concise, well-organized study notes on '{topic}' (AI field: '{field}'), using headings and bullet points.",
     "Generate Summary": "Write a short summary (under 150 words) of '{topic}' (AI field: '{field}').",
-    "Generate MCQs": "Write 5 multiple-choice questions on '{topic}' (AI field: '{field}'), each with 4 options. Provide the answer key separately at the end.",
-    "Generate Quiz": "Write a 5-question quiz (mix of MCQ and short-answer) on '{topic}' (AI field: '{field}'). List questions first, then an answer key at the end.",
     "Practice Questions": "Write 5 practice questions (no answers) on '{topic}' (AI field: '{field}') for the learner to attempt on their own.",
     "Assignment Questions": "Write 3 assignment-style questions on '{topic}' (AI field: '{field}') suitable for homework submission.",
     "Study Plan": "Create a short, realistic study plan (spread over a few days) to master '{topic}' (AI field: '{field}').",
@@ -81,18 +80,16 @@ ACTIVITY_PROMPTS = {
 }
 
 ACTIVITY_MAX_TOKENS = {
-    "Explain Topic": 500,
-    "Real-Life Example": 350,
-    "Generate Notes": 1100,
-    "Generate Summary": 300,
-    "Generate MCQs": 700,
-    "Generate Quiz": 700,
-    "Practice Questions": 500,
-    "Assignment Questions": 500,
-    "Study Plan": 700,
-    "Interview Questions": 800,
-    "Coding Problem": 700,
-    "Ask Anything": 600,
+    "Explain Topic": 5000,
+    "Real-Life Example": 3500,
+    "Generate Notes": 5000,
+    "Generate Summary": 2500,
+    "Practice Questions": 2500,
+    "Assignment Questions": 2500,
+    "Study Plan": 2000,
+    "Interview Questions": 1800,
+    "Coding Problem": 1500,
+    "Ask Anything": 1500,
 }
 
 
@@ -200,7 +197,7 @@ client = genai.Client(api_key=api_key)
 # =========================================================
 # HEADER
 # =========================================================
-st.title("🤖 AI Learning Buddy")
+st.title(" AI Learning Buddy")
 st.markdown("**Welcome to AI Learning Buddy!**")
 st.caption(
     "This application uses Google Gemini AI to help you learn Artificial Intelligence and its "
@@ -208,7 +205,7 @@ st.caption(
 )
 
 feat_col1, feat_col2, feat_col3, feat_col4, feat_col5 = st.columns(5)
-feat_col1.markdown("🤖 **Ask AI**")
+feat_col1.markdown(" **Ask AI**")
 feat_col2.markdown("📖 **Explain Topic**")
 feat_col3.markdown("🌍 **Real-Life Examples**")
 feat_col4.markdown("📝 **Quiz Generator**")
@@ -219,7 +216,7 @@ st.markdown("---")
 with st.expander("✨ Features"):
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("#### 🤖 AI Tutor")
+        st.markdown("####  AI Tutor")
         st.write("Ask any question about AI and its subfields, and get simple, easy-to-understand explanations.")
     with c2:
         st.markdown("#### 📝 Quiz Generator")
@@ -257,11 +254,11 @@ st.markdown("---")
 
 with st.sidebar:
     st.title("About")
-    st.caption("Persona: **Professor Sunny** 🤖 — a patient AI tutor focused entirely on AI and its subfields.")
+    st.caption("Persona: **Bharathi**  — an AI tutor focused entirely on AI and its subfields.")
 
     st.markdown("#### ✨ Features")
     st.markdown(
-        "- 🤖 Ask AI\n"
+        "-  Ask AI\n"
         "- 📖 Explain Topic\n"
         "- 🌍 Real-Life Examples\n"
         "- 📝 Quiz Generator (+ Interactive Quiz)\n"
@@ -329,10 +326,11 @@ if topic:
     activity = st.selectbox("Choose an Activity", ACTIVITIES_BASE, label_visibility="collapsed")
 
     if st.button("✨ Generate", type="primary"):
-        if activity == "🎯 Interactive Quiz":
+        if activity in INTERACTIVE_QUIZ_ACTIVITIES:
             level_guidance = build_experience_instruction(exp_level)
-            quiz_prompt = quiz_engine.build_quiz_prompt(topic, field, exp_level, level_guidance)
-            with st.spinner("Professor Sunny is building your interactive quiz..."):
+            only_types = ["single_mcq"] if activity == "Generate MCQs" else None
+            quiz_prompt = quiz_engine.build_quiz_prompt(topic, field, exp_level, level_guidance, only_types=only_types)
+            with st.spinner("Bharathi is building your quiz..."):
                 try:
                     raw = client.models.generate_content(
                         model=MODEL_NAME,
@@ -357,7 +355,7 @@ if topic:
         else:
             quiz_engine.clear_quiz()
             system_instruction = (
-                "You are Professor Sunny, a patient and encouraging AI learning buddy specializing in AI and its subfields. "
+                "You are Bharathi, anencouraging AI learning buddy specializing in AI and its subfields. "
                 + build_experience_instruction(exp_level)
                 + " Always stay on topic and keep your tone warm and supportive."
             )
@@ -387,13 +385,13 @@ if topic:
     # =====================================================
     # INTERACTIVE QUIZ (persists across per-question reruns)
     # =====================================================
-    if activity == "🎯 Interactive Quiz" and st.session_state.quiz:
+    if activity in INTERACTIVE_QUIZ_ACTIVITIES and st.session_state.quiz:
         quiz_engine.render_quiz_ui()
 
     # =====================================================
     # STEP 5 — DISPLAY RESPONSE (skipped in Interactive Quiz mode)
     # =====================================================
-    if activity != "🎯 Interactive Quiz" and st.session_state.last_response:
+    if activity not in INTERACTIVE_QUIZ_ACTIVITIES and st.session_state.last_response:
         st.markdown("### 📖 Response")
         st.markdown(st.session_state.last_response)
 
@@ -413,7 +411,7 @@ if topic:
     # =====================================================
     # SESSION HISTORY (skipped in Interactive Quiz mode)
     # =====================================================
-    if activity != "🎯 Interactive Quiz" and len(st.session_state.history) > 1:
+    if activity not in INTERACTIVE_QUIZ_ACTIVITIES and len(st.session_state.history) > 1:
         with st.expander(f"🕘 Previous responses this session ({len(st.session_state.history) - 1})"):
             for item in reversed(st.session_state.history[:-1]):
                 st.markdown(f"**{item['activity']}** — *{item['topic']}* ({item['context']})")
