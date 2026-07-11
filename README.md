@@ -1,52 +1,91 @@
 # 🤖 AI Learning Buddy
 
-An interactive, AI-powered learning assistant built with **Streamlit** and **Google Gemini**, focused entirely on **Artificial Intelligence and its related fields**—including Machine Learning, Deep Learning, NLP, Computer Vision, Generative AI, Robotics, AI Ethics, and more.
-=======
-Type in any AI topic, choose your experience level, select a learning activity, and receive personalized AI-generated explanations, quizzes, notes, interview questions, coding challenges, and more.
+An AI-powered learning assistant built using **Python**, **Streamlit**, and **Google Gemini API** that helps learners understand **Artificial Intelligence** and its related domains through personalized explanations, quizzes, notes, coding challenges, and interactive learning.
 
 ---
 
-## 🚀 Live Demo
+## 🌐 Live Demo
 
-🌐 **Try the App:**  
+**🔗 Live App:**  
 https://ai-learning-buddy-ymnwvjbldvym2akdvt8pbg.streamlit.app/
 
-📂 **GitHub Repository:**  
+**📂 GitHub Repository:**  
 https://github.com/sbharathi09/AI-Learning-Buddy
+
+---
+
+## 📌 Overview
+
+AI Learning Buddy is an intelligent tutor that adapts its responses based on the learner's experience level and learning activity. Users can also personalize their AI tutor by providing a custom **AI Persona Name**, making the learning experience more interactive and engaging.
 
 ---
 
 ## ✨ Features
 
-- 🤖 **Ask AI** — Free-form Q&A on any AI-related topic
-- 📖 **Explain Topic** — Clear explanations tailored to your experience level
-- 🌍 **Real-Life Examples** — Understand concepts through practical examples
-- 📝 **Quiz Generator** — Generate MCQs and short-answer quizzes with answer keys
-- 🎯 **Interactive Quiz**
-  - Single & multiple-correct MCQs
-  - True/False questions
-  - Fill-in-the-blank
-  - Assertion & Reason questions
-  - Coding Output questions
-  - Numerical questions
-  - Instant feedback with explanations
-  - Live score tracking and performance summary
-- 📚 **Study Tools**
-  - Notes
-  - Summaries
-  - Practice Questions
-  - Assignment Questions
-  - Study Plans
-- 💼 **Interview Preparation**
-  - AI/ML interview questions
-  - Ideal answer guidance
-- 💻 **Coding Challenges**
-  - AI & ML programming problems with hints
-- 🖼️ **Wikipedia Integration**
-  - Topic summaries and images
-- ⬇️ **Download & Copy**
-  - Save responses as `.txt`
-  - One-click copy
+### 👤 Personalized AI Persona
+- Custom AI Buddy name
+- Personalized introductions
+- Consistent persona throughout the session
+
+### 🎓 Adaptive Learning
+- Beginner
+- Intermediate
+- Advanced
+
+### 🧠 AI Learning Domains
+- Artificial Intelligence
+- Machine Learning
+- Deep Learning
+- Generative AI
+- Large Language Models (LLMs)
+- Natural Language Processing (NLP)
+- Computer Vision
+- Robotics
+- Reinforcement Learning
+- AI Ethics & Responsible AI
+- Prompt Engineering
+- MLOps
+
+### 📚 Learning Activities
+- Explain Topic
+- Real-Life Example
+- Generate Notes
+- Generate Summary
+- Practice Questions
+- Assignment Questions
+- Study Plan
+- Previous Exam Tips
+
+### 📝 Assessment
+- MCQ Generator
+- Interactive Quiz
+- True/False Questions
+- Fill in the Blanks
+- Assertion & Reason
+- Coding Output Questions
+- Numerical Questions
+- Instant Feedback
+- Live Score Tracking
+
+### 💼 Career Preparation
+- Interview Questions
+- Coding Problems
+- Concept Revision
+- AI Learning Guidance
+
+### 🌍 Wikipedia Integration
+- Topic Summary
+- Topic Thumbnail/Image
+
+### 📥 Utilities
+- Download Response
+- Copy Response
+- Session History
+- Clear Chat
+
+### 🔒 Secure API Management
+- Gemini API using Streamlit Secrets
+- No API keys stored in source code
 
 ---
 
@@ -54,19 +93,10 @@ https://github.com/sbharathi09/AI-Learning-Buddy
 
 - Python
 - Streamlit
-- Google Gemini API (`google-genai`)
+- Google Gemini API
 - Wikipedia REST API
 - Streamlit Secrets
-
----
-
-## 📖 How to Use
-
-1. Select an AI field.
-2. Choose your experience level.
-3. Enter a topic.
-4. Select a learning activity.
-5. Click **✨ Generate** to receive AI-powered content.
+- Git & GitHub
 
 ---
 
@@ -74,48 +104,80 @@ https://github.com/sbharathi09/AI-Learning-Buddy
 
 ```text
 AI-Learning-Buddy/
+│
 ├── app.py
 ├── quiz_engine.py
 ├── requirements.txt
+├── README.md
 ├── .gitignore
-├── .streamlit/
-│   └── secrets.toml
-└── README.md
+└── .streamlit/
+    └── secrets.toml
 ```
 
 ---
 
 ## 🚀 Run Locally
 
+### Clone Repository
+
 ```bash
 git clone https://github.com/sbharathi09/AI-Learning-Buddy.git
-
 cd AI-Learning-Buddy
+```
 
+### Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
+### Add Gemini API Key
+
+Create:
+
+```
+.streamlit/secrets.toml
+```
+
+Add:
+
+```toml
+GEMINI_API_KEY="YOUR_API_KEY"
+```
+
+### Run
+
+```bash
 streamlit run app.py
 ```
 
-Create `.streamlit/secrets.toml`:
+---
 
-```toml
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
-```
+## ☁️ Deployment
+
+This project is deployed using **Streamlit Community Cloud**.
+
+Simply connect the GitHub repository and add your **GEMINI_API_KEY** under **App Settings → Secrets**.
 
 ---
 
 ## 🔒 Security
 
-- API keys are stored securely using **Streamlit Secrets**.
+- API keys are securely stored using Streamlit Secrets.
 - `secrets.toml` is excluded using `.gitignore`.
-- No API keys are stored in the source code.
+- Sensitive credentials are never committed to GitHub.
 
 ---
 
-## 📜 License
+## 🎯 Future Enhancements
 
-This project is developed for educational purposes.
+- Voice-based AI Tutor
+- PDF Notes Generator
+- Multi-language Support
+- Progress Dashboard
+- Personalized Learning History
+- Flashcards
+- Learning Analytics
 
 ---
 
@@ -123,4 +185,10 @@ This project is developed for educational purposes.
 
 **Swamidas Bharathi**
 
-GitHub: https://github.com/sbharathi09
+📧 GitHub: https://github.com/sbharathi09
+
+---
+
+## ⭐ Support
+
+If you found this project useful, consider giving it a ⭐ on GitHub.
